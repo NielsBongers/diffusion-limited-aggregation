@@ -9,6 +9,16 @@
 
 We can play with the initial seed positions and counts and simulation time to get different behaviors. 
 
+## Getting started 
+
+Clone the repo, then simply: 
+
+```bash 
+cargo run --release
+```
+
+I would advise against `cargo run` - it all takes a long time to finish depending on the settings. 
+
 ## Features 
 
 The entire code is very simple - it's single-threaded, and has practically no optimizations; we just place a particle, then iterate until it hits something. That means the first few iterations can be very slow, especially for large grid sizes. 
@@ -49,14 +59,4 @@ pub enum SeedType {
 #### Circular seed 
 
 <img src="figures/20260102 - Diffusion Limited Aggregation - rings.png" width="600" alt="Circular seeds.">
-
-## Getting started 
-
-Clone the repo, then simply: 
-
-```bash 
-cargo run --release
-```
-
-I would advise against `cargo run` - it all takes a long time to finish depending on the settings. 
 
