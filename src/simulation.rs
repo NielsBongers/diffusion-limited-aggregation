@@ -9,6 +9,15 @@ pub enum CellState {
     Blocked,
 }
 
+pub enum SeedType {
+    Random,
+    RandomMultiple(i32),
+    Single((i32, i32)),
+    LineAtX(i32),
+    LineAtY(i32),
+    Ring(f64, f64),
+}
+
 pub struct Simulation {
     pub lattice: HashMap<(i32, i32), CellState>,
     pub rng: SmallRng,

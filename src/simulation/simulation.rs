@@ -1,5 +1,7 @@
 use crate::simulation::CellState;
+use crate::simulation::SeedType;
 use crate::simulation::Simulation;
+use indicatif::{ProgressBar, ProgressStyle};
 use rand::Rng;
 use rand::SeedableRng;
 use rand::rngs::SmallRng;
@@ -8,7 +10,7 @@ use std::fs::{self, File};
 use std::io::Write;
 
 impl Simulation {
-    pub fn new(x_max: i32, y_max: i32, max_iterations: i32) -> Self {
+    pub fn new(x_max: i32, y_max: i32, max_iterations: i32, seed_type: &SeedType) -> Self {
         let mut thread_rng = rand::rng();
         let rng = SmallRng::from_rng(&mut thread_rng);
 
@@ -22,7 +24,7 @@ impl Simulation {
             max_iterations,
         };
 
-        simulation.set_seed();
+        simulation.set_seed(seed_type);
 
         simulation
     }
@@ -72,9 +74,72 @@ impl Simulation {
         self.lattice.insert((x, y), CellState::Occupied(iteration));
     }
 
-    pub fn set_seed(&mut self) {
-        self.lattice
-            .insert((self.x_max / 2, self.y_max / 2), CellState::Occupied(0));
+    pub fn set_seed(&mut self, seed_type: &SeedType) {
+        match seed_type {
+            SeedType::Random => {
+                let x = self.rng.random_range(0..=self.x_max);
+                let y = self.rng.random_range(0..=self.y_max);
+
+                self.lattice.insert((x, y), CellState::Occupied(0));
+            }
+            SeedType::RandomMultiple(seed_count) => {
+                for _ in 0..*seed_count {
+                    let x = self.rng.random_range(0..=self.x_max);
+                    let y = self.rng.random_range(0..=self.y_max);
+
+                    self.lattice.insert((x, y), CellState::Occupied(0));
+                }
+            }
+            SeedType::Single((x, y)) => {
+                assert!(
+                    *x > 0 && *x < self.x_max && *y > 0 && *y < self.y_max,
+                    "Bounds for initialization not satisfied! Required: x: [0, {}]. y: [0, {}]",
+                    self.x_max,
+                    self.y_max
+                );
+
+                self.lattice.insert((*x, *y), CellState::Occupied(0));
+            }
+            SeedType::LineAtX(x) => {
+                assert!(
+                    *x > 0 && *x < self.x_max,
+                    "Bounds for initialization not satisfied! Required: x: [0, {}]. y: [0, {}]",
+                    self.x_max,
+                    self.y_max
+                );
+
+                for y in 0..self.y_max {
+                    self.lattice.insert((*x, y), CellState::Occupied(0));
+                }
+            }
+            SeedType::LineAtY(y) => {
+                assert!(
+                    *y > 0 && *y < self.y_max,
+                    "Bounds for initialization not satisfied! Required: x: [0, {}]. y: [0, {}]",
+                    self.x_max,
+                    self.y_max
+                );
+
+                for x in 0..self.x_max {
+                    self.lattice.insert((x, *y), CellState::Occupied(0));
+                }
+            }
+            SeedType::Ring(radius, width) => {
+                let center_x = self.x_max / 2;
+                let center_y = self.y_max / 2;
+
+                for x in 0..self.x_max {
+                    for y in 0..self.y_max {
+                        let distance_to_center =
+                            (((x - center_x).pow(2) + (y - center_y).pow(2)) as f64).sqrt();
+
+                        if distance_to_center >= *radius && distance_to_center <= radius + width {
+                            self.lattice.insert((x, y), CellState::Occupied(0));
+                        }
+                    }
+                }
+            }
+        }
     }
 
     pub fn export_lattice(&self) {
@@ -96,6 +161,16 @@ impl Simulation {
     }
 
     pub fn step(&mut self) {
+        let progress_bar = ProgressBar::new(self.max_iterations as u64);
+        progress_bar.set_style(
+            ProgressStyle::with_template(
+                "{spinner:.green} [{elapsed_precise}] [{bar:40.cyan/blue}] {pos:>7}/{len:7} ({eta_precise})",
+            )
+            .unwrap()
+            .progress_chars("=>-"),
+        );
+        progress_bar.set_message("Simulating diffusion");
+
         for iteration in 0..self.max_iterations {
             let x_init = self.rng.random_range(0..=self.x_max);
             let y_init = self.rng.random_range(0..=self.y_max);
@@ -108,14 +183,8 @@ impl Simulation {
             }
 
             loop {
-                let occupied_neighbors = self.check_occupied_neighbors(x, y);
-
-                // println!("({}, {}): {:?}", x, y, occupied_neighbors);
-
-                if occupied_neighbors {
+                if self.check_occupied_neighbors(x, y) {
                     self.set_cell(x, y, iteration);
-
-                    // println!("Stopping!");
 
                     break;
                 }
@@ -126,15 +195,6 @@ impl Simulation {
                     let x_new = x + i;
                     let y_new = y + j;
 
-                    // println!(
-                    //     "({}, {}) - ({}, {}) - {:?}",
-                    //     x_new,
-                    //     y_new,
-                    //     i,
-                    //     j,
-                    //     self.check_cell(x_new, y_new)
-                    // );
-
                     if self.check_cell(x_new, y_new) != &CellState::Blocked {
                         x = x_new;
                         y = y_new;
@@ -143,6 +203,8 @@ impl Simulation {
                     }
                 }
             }
+
+            progress_bar.inc(1);
         }
     }
 }
