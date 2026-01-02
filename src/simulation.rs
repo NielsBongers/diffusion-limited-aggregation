@@ -11,11 +11,11 @@ pub enum CellState {
 
 pub enum SeedType {
     Random,
-    RandomMultiple(i32),
-    Single((i32, i32)),
-    LineAtX(i32),
-    LineAtY(i32),
-    Ring(f64, f64),
+    RandomMultiple(i32), // Counts
+    Single((i32, i32)),  // Location
+    LineAtX(i32),        // x-coordinate
+    LineAtY(i32),        // y-coordinate
+    Ring(f64, f64),      // Radius and width.
 }
 
 pub struct Simulation {

@@ -6,7 +6,6 @@ fn main() {
     let max_iterations = 10_000;
 
     let seed_type = SeedType::Single((x_max / 2, y_max / 2));
-    // let seed_type = SeedType::Ring(100.0, 20.0);
 
     let mut simulation = Simulation::new(x_max, y_max, max_iterations, &seed_type);
 
